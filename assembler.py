@@ -166,9 +166,11 @@ def parse_cinst(instruction: str, lineno: int) -> int:
     return inst
 
 
-def build_symbol_table(code: list[str]) -> dict[str, int]:
-    symbols = PREDEFINED_SYMBOLS
-    real_lineno = 0    # accurate line numbers in error messages
+def assemble(code: list[str]) -> list[str]:
+    symbols = PREDEFINED_SYMBOLS.copy()
+    pending_labels = []
+    assembly = []
+    real_lineno = 0
     lineno = 0
     for line in code:
         line = line.strip()
@@ -183,30 +185,30 @@ def build_symbol_table(code: list[str]) -> dict[str, int]:
                 )
             symbols[label] = lineno
             continue
-        lineno += 1
-    return symbols
-
-
-def assemble(code: list[str]) -> list[str]:
-    symbols = build_symbol_table(code)
-    assembly = []
-    next_address = 16
-    real_lineno = 0
-    for line in code:
-        line = line.strip()
-        real_lineno += 1
-        if line.startswith("//") or line == "" or line.startswith("("):
-            continue
         if line.startswith("@"):    # A instruction
             inst = parse_ainst(line, real_lineno)
             if type(inst) is str:
                 if symbols.get(inst) is None:
-                    symbols[inst] = next_address
-                    next_address += 1
+                    # write label directly in the assembly for later resolution
+                    assembly.append(inst)
+                    pending_labels.append(lineno)
+                    lineno += 1
+                    continue
                 inst = symbols[inst]
         else:                       # C instruction
             inst = parse_cinst(line, real_lineno)
 
         assembly.append(f"{inst:016b}\n")
-        real_lineno += 1
+        lineno += 1
+
+    # resolve pending labels
+    next_address = 16
+    for lineno in pending_labels:
+        label = assembly[lineno]
+        if symbols.get(label) is None:
+            symbols[label] = next_address
+            next_address += 1
+        inst = symbols[label]
+        assembly[lineno] = f"{inst:016b}\n"
+
     return assembly
