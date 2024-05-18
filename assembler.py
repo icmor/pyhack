@@ -177,9 +177,9 @@ def assemble(code: list[str]) -> list[str]:
     real_lineno = 0
     lineno = 0
     for line in code:
-        line = line.strip()
+        line = line.partition("//")[0].strip()	# allow for inline comments
         real_lineno += 1
-        if line.startswith("//") or line == "":
+        if not line:
             continue
         if line.startswith("("):    # label
             label = parse_label(line, real_lineno)
