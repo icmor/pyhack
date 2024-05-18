@@ -74,8 +74,12 @@ class HackValueError(ValueError):
 
 
 def is_valid_symbol(symbol: str) -> bool:
-    return (not symbol[0].isdigit() and
-            all(c.isalnum() or c in "_.$:" for c in symbol))
+    if symbol[0].isdigit():
+        return False
+    for c in symbol:
+        if not c.isalnum() and c not in "_.$:":
+            return False
+    return True
 
 
 def parse_label(instruction: str, lineno: int) -> str:
