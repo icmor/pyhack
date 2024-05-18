@@ -75,27 +75,27 @@ class HackValueError(ValueError):
 
 def is_valid_symbol(symbol: str) -> bool:
     return (not symbol[0].isdigit() and
-            all(map(lambda c: c.isalnum() or c in "_.$:", symbol)))
+            all(c.isalnum() or c in "_.$:" for c in symbol))
 
 
 def parse_label(instruction: str, lineno: int) -> str:
-    if instruction.startswith("(") and instruction.endswith(")"):
-        label = instruction[1:-1]
-        if is_valid_symbol(label):
-            return label
+    label = instruction.removeprefix("(").removesuffix(")")
+    if len(label) != len(instruction) - 2:
         raise HackSyntaxError(
-            f"Invalid label {label} at line: {lineno}\n"
-            "Symbols cannot begin with a digit and can only contain letters, "
-            "digits, dollar signs, dots, and underscores."
+            f"Malformed instruction {instruction} at line: {lineno}\n"
+            "Labels must be in the format (ccc) where ccc is a valid symbol."
         )
+    if is_valid_symbol(label):
+        return label
     raise HackSyntaxError(
-        f"Malformed instruction {instruction} at line: {lineno}\n"
-        "Labels must be in the format (ccc) where ccc is a valid symbol."
+        f"Invalid label {label} at line: {lineno}\n"
+        "Symbols cannot begin with a digit and can only contain letters, "
+        "digits, dollar signs, dots, and underscores."
     )
 
 
 def parse_ainst(instruction: str, lineno: int) -> str | int:
-    symbol = instruction[1:]
+    symbol = instruction.removeprefix("@")
     if symbol.isdigit():
         address = int(symbol)
         if address >= 0x0 and address <= 0x7FFF:
@@ -173,9 +173,9 @@ def build_symbol_table(code: list[str]) -> dict[str, int]:
     for line in code:
         line = line.strip()
         real_lineno += 1
-        if not line or line.startswith("//"):
+        if line.startswith("//") or line == "":
             continue
-        if line.startswith("("):
+        if line.startswith("("):    # label
             label = parse_label(line, real_lineno)
             if symbols.get(label) is not None:
                 raise HackSyntaxError(
